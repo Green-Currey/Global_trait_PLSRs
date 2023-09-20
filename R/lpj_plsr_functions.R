@@ -4,8 +4,13 @@ print.message <- function(text, more.text=NULL) {
     message(paste("[", timestamp, "]", text, more.text))
 }
 
-jackknife.test <- function(plsr.dataset, n.comps = 15, iterations = 10, prop = 0.05, plots = T) {
+brightness.norm <- function(x) {
+    x / sqrt(sum(x^2))
+}
+
+jackknife.test <- function(plsr.dataset, data.var, n.comps = 15, iterations = 10, prop = 0.05, plots = T) {
     require(pls)
+    require(tidyr)
     pls.options(plsralg = "oscorespls")
     pls.options("plsralg")
     
@@ -67,12 +72,16 @@ jackknife.test <- function(plsr.dataset, n.comps = 15, iterations = 10, prop = 0
         print(Sys.time() - start.time)
     }
     
+    return(pressDFres)
     
 }
 
-runPLSR <- function (plsr.df, data.var, train.size, plots = T) {
+
+runPLSR <- function (plsr.df, data.var, train.size, jk.comps = 15, jk.iterations = 10, jk.prop = 0.05, plots = F, wl = seq(400, 2500, 10)) {
     
     require(pls)
+    pls.options(plsralg = "oscorespls")
+    pls.options("plsralg")
     require(tidyverse)
     
     n <- seq(nrow(plsr.df))
@@ -86,7 +95,7 @@ runPLSR <- function (plsr.df, data.var, train.size, plots = T) {
                                spectra = I(plsr.spectra))
     
     test.spectra <- as.matrix(test[,7:ncol(test)])
-    test.dataset <- data.frame(PLSR_LMA = test[data.var],
+    test.dataset <- data.frame(data = test[data.var],
                                spectra = I(test.spectra))
     
     
@@ -104,7 +113,7 @@ runPLSR <- function (plsr.df, data.var, train.size, plots = T) {
     if (plots == T) {
         #lets take a look at the spectra - due to the naming of the bands in the csv there is not an x axis range
         plot(wl, 
-             seq(from = -0.8, to = 0.8, length = length(wl)),
+             seq(from = -1, to = 1, length = length(wl)),
              type = "n",
              xlab = "Wavelength (nm)", 
              ylab = "Correlation / Refl (scaled)")
@@ -137,7 +146,8 @@ runPLSR <- function (plsr.df, data.var, train.size, plots = T) {
     
     #first lets find the dimensions of our dataset and set some parameters
     print.message('Running jackknife test.')
-    jackknife(plsr.dataset)
+    jk.df <- jackknife.test(plsr.dataset, data.var, jk.comps, jk.iterations, jk.prop)
+    dim(jk.df)
     
     # I have no idea how to determine what works here so I'm just guessing. Need to ask Shawn or reread his paper.
     
@@ -148,13 +158,13 @@ runPLSR <- function (plsr.df, data.var, train.size, plots = T) {
     loc <- 2
     pval <- 1
     while (pval > 0.05) {
-        ttest <- t.test(pressDFres$value[which(pressDFres$name == 1)], 
-                        pressDFres$value[which(pressDFres$name == loc)]); 
+        ttest <- t.test(jk.df$value[which(jk.df$name == 1)], 
+                        jk.df$value[which(jk.df$name == loc)]); 
         pval <- ttest$p.value
         loc <- loc+1
     }
     
-    print.message(loc-1,' number of components determined.')
+    print.message(loc-1,'components determined.')
     # By examining the out put we can determine what the best number of components are to avoid overfitting. Need to ask Shawn about this.
     
     
@@ -185,16 +195,16 @@ runPLSR <- function (plsr.df, data.var, train.size, plots = T) {
     
     if (plots == T) {
         par(mar = c(4,4,3,3))
-        plot(train$LMA, train$LMA, 
+        plot(unlist(train[data.var]), unlist(train[data.var]), 
              type = "n",
              xlab = "Modelled LMA (g/m2)",
              ylab = "Measured LMA (g/m2)",
              main = "PLSR Modelled Top of Canopy LMA - TRAINING DATA")
         
-        abline(lm(train$LMA ~ fit1), lwd = 2)
+        abline(lm(unlist(train[data.var]) ~ fit1), lwd = 2)
         abline(0, 1, col = "red", lwd = 2, lty = 2)
         graphics::text(fit1, 
-                       train$LMA, fit1, 
+                       unlist(train[data.var]), fit1, 
                        labels = paste0('[',round(train$x),', ', round(train$y),']'),
                        cex = 0.6)
     }
@@ -224,16 +234,16 @@ runPLSR <- function (plsr.df, data.var, train.size, plots = T) {
     print.message('Testing RMSE: ', round(sqrt(mean((unlist(test[data.var]) - plsr.predicted.test)^2)),3))
     print.message('Testing R2: ',round(summary(lm(unlist(test[data.var]) ~ plsr.predicted.test))$r.squared, 3))
     
-    return(plsr.out$coefficients)
+    return(coef(plsr.out, intercept=TRUE) %>% as.vector)
 }
 
-WLinterp <- function(y, wavelength) { 
-    approx(x = seq(400,2500,10), y = y, 
-           xout = wavelength, method = "linear", rule = 2)[[2]]
-}
+# WL.interp <- function(wavelength1 = seq(400,2500,10) y, w) { 
+#     approx(x = wavelength1, y = y, 
+#            xout = wavelength, method = "linear", rule = 2)[[2]]
+# }
 
-applyCoeff <- function(x, coeffs, int, scale) {
-    temp <- sum(x * as.vector(coeffs) * scale)
-    trait <- temp + as.numeric(int)
+applyCoeff <- function(spectra, coeffs, intercept = 0, scale = 1) {
+    temp <- sum(spectra * as.vector(coeffs) * scale)
+    trait <- temp + as.numeric(intercept)
     return(as.numeric(trait))
 }
