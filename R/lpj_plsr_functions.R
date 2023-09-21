@@ -76,8 +76,9 @@ jackknife.test <- function(plsr.dataset, data.var, n.comps = 15, iterations = 10
     
 }
 
-
-runPLSR <- function (plsr.df, data.var, train.size, jk.comps = 15, jk.iterations = 10, jk.prop = 0.05, plots = F, wl = seq(400, 2500, 10)) {
+runPLSR <- function (plsr.df, data.var, train.size,
+                     jk.comps = 15, jk.iterations = 10, jk.prop = 0.05, 
+                     plots = F, wl = seq(400, 2500, 10)) {
     
     require(pls)
     pls.options(plsralg = "oscorespls")
@@ -237,13 +238,34 @@ runPLSR <- function (plsr.df, data.var, train.size, jk.comps = 15, jk.iterations
     return(coef(plsr.out, intercept=TRUE) %>% as.vector)
 }
 
-# WL.interp <- function(wavelength1 = seq(400,2500,10) y, w) { 
-#     approx(x = wavelength1, y = y, 
-#            xout = wavelength, method = "linear", rule = 2)[[2]]
-# }
-
 applyCoeff <- function(spectra, coeffs, intercept = 0, scale = 1) {
     temp <- sum(spectra * as.vector(coeffs) * scale)
     trait <- temp + as.numeric(intercept)
     return(as.numeric(trait))
+}
+
+wl.interp <- function(y, wavelength) {
+    out <- approx(x = seq(400,2500,10), y = y, xout = wavelength, 
+                  method = "linear", rule = 2)[[2]]
+    
+    return(out)
+}
+
+trait.map <- function(raster, coeffs, coeffs_wl) {
+    require(terra)
+    raster[raster==0] <- NA
+    if (dim(raster)[3] != length(coeffs_wl)) {
+        
+        # resample wavelengths 
+        raster <- app(raster, function (y, w) wl.interp(y, coeffs_wl))
+        raster[raster==0] <- NA
+        
+    }
+    
+    # appling coeffs
+    traitmap <- app(raster, function (x) applyCoeff(x, coeffs = coeffs[-1], intercept = coeffs[1]))
+    traitmap[traitmap<0] <- NA
+    
+    return(traitmap)    
+    
 }
