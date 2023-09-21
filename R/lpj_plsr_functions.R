@@ -161,7 +161,7 @@ runPLSR <- function (plsr.df, data.var, train.size,
     while (pval < 0.1 && loc <= jk.comps) {
         ttest <- t.test(jk.df$PRESS[which(jk.df$Comp == loc-1)], 
                         jk.df$PRESS[which(jk.df$Comp == loc)]); 
-        pval <- ttest$p.value; pval
+        pval <- ttest$p.value;
         loc <- loc+1
     }
     
