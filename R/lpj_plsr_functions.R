@@ -8,7 +8,7 @@ brightness.norm <- function(x) {
     x / sqrt(sum(x^2))
 }
 
-jackknife.test <- function(plsr.dataset, data.var, n.comps = 15, iterations = 10, prop = 0.05, plots = T) {
+jackknife.test <- function(plsr.dataset, data.var, n.comps = 15, iterations = 20, prop = 0.05, plots = T) {
     require(pls)
     require(tidyr)
     pls.options(plsralg = "oscorespls")
@@ -59,12 +59,12 @@ jackknife.test <- function(plsr.dataset, data.var, n.comps = 15, iterations = 10
     #           row.names = FALSE)
     
     #lets melt the data for easier plotting
-    pressDFres <- pivot_longer(cbind.data.frame(ID = seq(nrow(pressDF)), pressDF), cols = -1)
-    pressDFres <- pressDFres %>% mutate(name = as.numeric(name))
+    pressDFres <- pivot_longer(cbind.data.frame(ID = seq(nrow(pressDF)), pressDF), cols = -1, names_to = 'Comp', values_to = 'PRESS')
+    pressDFres <- pressDFres %>% mutate(Comp = as.numeric(Comp))
     
     #lets see what our press statistics look like. small is better for this.
     if (plots == T) {
-        boxplot(pressDFres$value ~ pressDFres$name, 
+        boxplot(pressDFres$PRESS ~ pressDFres$Comp, 
                 xlab = "n Components",
                 ylab = "PRESS",
                 main = 'PLSR_LMA')
@@ -77,8 +77,8 @@ jackknife.test <- function(plsr.dataset, data.var, n.comps = 15, iterations = 10
 }
 
 runPLSR <- function (plsr.df, data.var, train.size,
-                     jk.comps = 15, jk.iterations = 10, jk.prop = 0.05, 
-                     plots = F, wl = seq(400, 2500, 10)) {
+                     jk.comps = 10, jk.iterations = 30, jk.prop = 0.10, 
+                     plots = T, wl = seq(400, 2500, 10)) {
     
     require(pls)
     pls.options(plsralg = "oscorespls")
@@ -157,11 +157,11 @@ runPLSR <- function (plsr.df, data.var, train.size,
     # a smaller PRESS statistic is better. so lets see where this starts to vary. we want the lowest number of components so that
     # we don't over predict our model.
     loc <- 2
-    pval <- 1
-    while (pval > 0.05) {
-        ttest <- t.test(jk.df$value[which(jk.df$name == 1)], 
-                        jk.df$value[which(jk.df$name == loc)]); 
-        pval <- ttest$p.value
+    pval <- 0
+    while (pval < 0.1 && loc <= jk.comps) {
+        ttest <- t.test(jk.df$PRESS[which(jk.df$Comp == loc-1)], 
+                        jk.df$PRESS[which(jk.df$Comp == loc)]); 
+        pval <- ttest$p.value; pval
         loc <- loc+1
     }
     
