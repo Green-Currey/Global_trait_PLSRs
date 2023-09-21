@@ -11,7 +11,6 @@ lpj.path <- Sys.getenv('lpjpath')
 dp <- Sys.getenv('datapath')
 lpj.nc <- Sys.getenv('lpjnc')
 
-
 print(lpj.path)
 print(dp)
 print(lpj.nc)
@@ -37,7 +36,6 @@ lnc <- rast(file.path(dp, paste0(n.name,'.tif'))) %>% terra::extract(cells, ID =
 lpc <- rast(file.path(dp, paste0(p.name,'.tif'))) %>% terra::extract(cells, ID = F)
 sla <- rast(file.path(dp, paste0(sla.name,'.tif'))) %>% terra::extract(cells, ID = F)
 
-
 # Create PLSRs for July
 lpj.df <- as.data.frame(rast(lpj.array[,,,7]), xy = T)
 
@@ -48,16 +46,16 @@ names(plsr.df) <- c('x', 'y', paste0('wave',seq(400,2500,10)), lma.name, n.name,
 # This is for July
 print('LMA PLSR')
 lma.coefs <- runPLSR(plsr.df, data.var = lma.name, train.size = 5000, plots = F,
-                 jk.prop = 0.20)
+                 jk.prop = 0.15, jk.iterations = 30)
 print('N PLSR')
 n.coefs <- runPLSR(plsr.df, data.var = n.name, train.size = 5000, plots = F,
-                 jk.prop = 0.20)
+                 jk.prop = 0.15, jk.iterations = 30)
 print('P PLSR')
 p.coefs <- runPLSR(plsr.df, data.var = p.name, train.size = 5000, plots = F,
-                 jk.prop = 0.20)
+                 jk.prop = 0.15, jk.iterations = 30)
 print('SLA PLSR')
 sla.coefs <- runPLSR(plsr.df, data.var = sla.name, train.size = 5000, plots = F,
-                 jk.prop = 0.20)
+                 jk.prop = 0.15, jk.iterations = 30)
 
 # writing coeffs
 print('Writing coefficients')
