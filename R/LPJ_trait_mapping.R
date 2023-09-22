@@ -60,7 +60,9 @@ sla.coefs <- runPLSR(plsr.df, data.var = sla.name, train.size = 5000, plots = F,
 # writing coeffs
 print('Writing coefficients')
 coeff.df <- data.frame(coeff = c('Intercept', seq(400,2500,10)), lma = lma.coefs, n = n.coefs, p = p.coefs, sla = sla.coefs)
-write_csv(coeff.df, file.path(dp, 'LPJ_TRY_coeffs_July.csv'))
+dim(coeff.df)
+head(coeff.df)
+#write_csv(coeff.df, file.path(dp, 'LPJ_TRY_coeffs_July.csv'))
 
 
 print('Applying coefficients')
