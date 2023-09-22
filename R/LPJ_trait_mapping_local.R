@@ -42,16 +42,19 @@ names(plsr.df) <- c('x', 'y', paste0('wave',seq(400,2500,10)), lma.name, n.name,
 
 # LMA
 lma.coefs <- runPLSR(plsr.df, data.var = lma.name, train.size = 1000, plots = F,
-                 jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 5)
+                 jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 10)
 n.coefs <- runPLSR(plsr.df, data.var = lma.name, train.size = 1000, plots = F,
-                     jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 5)
+                     jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 10)
 p.coefs <- runPLSR(plsr.df, data.var = lma.name, train.size = 1000, plots = F,
-                   jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 5)
+                   jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 10)
 sla.coefs <- runPLSR(plsr.df, data.var = lma.name, train.size = 1000, plots = F,
-                   jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 5)
+                   jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 10)
 coeff.df <- data.frame(coeff = c('Intercept', seq(400,2500,10)), lma = lma.coefs, n = n.coefs, p = p.coefs, sla = sla.coefs)
 
 
 lpj.r <- rast(lpj.array[,,,7], ext = c(-180,180,-90,90), crs = crs('EPSG:4326'))
 lma.map <- trait.map(lpj.r, coeffs = coeff.df$lma, coeffs_wl = seq(400,2500,10))
+n.map <- trait.map(lpj.r, coeffs = coeff.df$n, coeffs_wl = seq(400,2500,10))
+p.map <- trait.map(lpj.r, coeffs = coeff.df$p, coeffs_wl = seq(400,2500,10))
+sla.map <- trait.map(lpj.r, coeffs = coeff.df$sla, coeffs_wl = seq(400,2500,10))
 plot(lma.map)
