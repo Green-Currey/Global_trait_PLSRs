@@ -46,21 +46,21 @@ names(plsr.df) <- c('x', 'y', paste0('wave',seq(400,2500,10)), lma.name, n.name,
 # This is for July
 print('LMA PLSR')
 lma.coefs <- runPLSR(plsr.df, data.var = lma.name, train.size = 5000, plots = F,
-                 jk.prop = 0.15, jk.iterations = 30)
+                     jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 5)
 print('N PLSR')
 n.coefs <- runPLSR(plsr.df, data.var = n.name, train.size = 5000, plots = F,
-                 jk.prop = 0.15, jk.iterations = 30)
+                   jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 5)
 print('P PLSR')
 p.coefs <- runPLSR(plsr.df, data.var = p.name, train.size = 5000, plots = F,
-                 jk.prop = 0.15, jk.iterations = 30)
+                   jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 5)
 print('SLA PLSR')
 sla.coefs <- runPLSR(plsr.df, data.var = sla.name, train.size = 5000, plots = F,
-                 jk.prop = 0.15, jk.iterations = 30)
+                     jk.test = F, jk.prop = 0.05, jk.iterations = 20, jk.comps = 5)
 
 # writing coeffs
 print('Writing coefficients')
 coeff.df <- data.frame(coeff = c('Intercept', seq(400,2500,10)), lma = lma.coefs, n = n.coefs, p = p.coefs, sla = sla.coefs)
-write_csv(coeff.df, file.path(fp, 'LPJ_TRY_coeffs_July.csv'))
+write_csv(coeff.df, file.path(dp, 'LPJ_TRY_coeffs_July.csv'))
 
 
 print('Applying coefficients')
