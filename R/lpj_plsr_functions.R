@@ -8,7 +8,7 @@ brightness.norm <- function(x) {
     x / sqrt(sum(x^2))
 }
 
-jackknife.test <- function(plsr.dataset, data.var, n.comps = 15, iterations = 20, prop = 0.05, plots = T) {
+jackknife.test <- function(plsr.dataset, data.var, n.comps = 15, iterations = 20, prop = 0.05, plots = F) {
     require(pls)
     require(tidyr)
     pls.options(plsralg = "oscorespls")
@@ -76,9 +76,9 @@ jackknife.test <- function(plsr.dataset, data.var, n.comps = 15, iterations = 20
     
 }
 
-runPLSR <- function (plsr.df, data.var, train.size,
-                     jk.comps = 10, jk.iterations = 30, jk.prop = 0.10, 
-                     plots = T, wl = seq(400, 2500, 10)) {
+runPLSR <- function (plsr.df, data.var, train.size, jk.test = TRUE,
+                     jk.comps = 5, jk.iterations = 30, jk.prop = 0.10, 
+                     plots = F, wl = seq(400, 2500, 10)) {
     
     require(pls)
     pls.options(plsralg = "oscorespls")
@@ -146,33 +146,32 @@ runPLSR <- function (plsr.df, data.var, train.size,
     #lets do a jackknife test to find the number of components to include in our PLSR model
     
     #first lets find the dimensions of our dataset and set some parameters
-    print.message('Running jackknife test.')
-    jk.df <- jackknife.test(plsr.dataset, data.var, jk.comps, jk.iterations, jk.prop)
-    dim(jk.df)
-    
-    # I have no idea how to determine what works here so I'm just guessing. Need to ask Shawn or reread his paper.
-    
-    # How many components? Can use this to determine if next largest is sig different than lower.  Then lower is best. 
-    # We can do this with a simple T-Test
-    # a smaller PRESS statistic is better. so lets see where this starts to vary. we want the lowest number of components so that
-    # we don't over predict our model.
-    loc <- 2
-    pval <- 0
-    while (pval < 0.1 && loc <= jk.comps) {
-        ttest <- t.test(jk.df$PRESS[which(jk.df$Comp == loc-1)], 
-                        jk.df$PRESS[which(jk.df$Comp == loc)]); 
-        pval <- ttest$p.value;
-        loc <- loc+1
+    if (jk.test) {
+        print.message('Running jackknife test.')
+        jk.df <- jackknife.test(plsr.dataset, data.var, jk.comps, jk.iterations, jk.prop, plots)
+        
+        # How many components? Can use this to determine if next largest is sig different than lower.  Then lower is best. 
+        # We can do this with a simple T-Test
+        # a smaller PRESS statistic is better. so lets see where this starts to vary. we want the lowest number of components so that
+        # we don't over predict our model.
+        loc <- 2
+        pval <- 0
+        while (pval < 0.1 && loc <= jk.comps) {
+            ttest <- t.test(jk.df$PRESS[which(jk.df$Comp == loc-1)], 
+                            jk.df$PRESS[which(jk.df$Comp == loc)]); 
+            pval <- ttest$p.value;
+            loc <- loc+1
+        }
+        
+        print.message(loc-1,'components determined.')
+        # since we see a low p-value we can see that there is no difference between the two variables now. so lets go with the smaller value.
+        #Now that we know the number of test components lets run our PLSR model again with that number of components.
+        nComps <- loc-1
+    } else {
+        print.message('No jackknife test.')
+        print.message('Number of comps = ', paste(jk.comps))
+        nComps <- jk.comps
     }
-    
-    print.message(loc-1,'components determined.')
-    # By examining the out put we can determine what the best number of components are to avoid overfitting. Need to ask Shawn about this.
-    
-    
-    # since we see a low p-value we can see that there is no difference between the two variables now. so lets go with the smaller value.
-    #Now that we know the number of test components lets run our PLSR model again with that number of components.
-    
-    nComps <- loc-1
     
     print.message('Running PLSR')
     plsr.out <- plsr(as.formula(paste0(data.var,'~spectra')), scale = FALSE,
@@ -198,9 +197,9 @@ runPLSR <- function (plsr.df, data.var, train.size,
         par(mar = c(4,4,3,3))
         plot(unlist(train[data.var]), unlist(train[data.var]), 
              type = "n",
-             xlab = "Modelled LMA (g/m2)",
-             ylab = "Measured LMA (g/m2)",
-             main = "PLSR Modelled Top of Canopy LMA - TRAINING DATA")
+             xlab = "Modelled",
+             ylab = "Measured",
+             main = "PLSR - TRAINING DATA")
         
         abline(lm(unlist(train[data.var]) ~ fit1), lwd = 2)
         abline(0, 1, col = "red", lwd = 2, lty = 2)
@@ -224,9 +223,9 @@ runPLSR <- function (plsr.df, data.var, train.size,
     if (plots == T) {
         plot(unlist(train[data.var]), unlist(train[data.var]),
              type = "n",
-             xlab = "Modelled LMA (g/m2)",
-             ylab = "Measured LMA (g/m2)",
-             main = "PLSR Modelled Top of Canopy LMA - TEST DATA")
+             xlab = "Modelled",
+             ylab = "Measured",
+             main = "PLSR - TESTING DATA")
         points(plsr.predicted.test, unlist(test[data.var]))
         abline(lm(unlist(test[data.var]) ~ plsr.predicted.test), lwd = 2)
         abline(0, 1, col = "red", lwd = 2, lty = 2)
