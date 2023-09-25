@@ -16,9 +16,9 @@ shp.path <- Sys.getenv('shpfile')
 
 
 shp <- vect(shp.path)
-crs(shp) <- 'EPSG:4326'
-
-lpj.nc <- nc_open(list.files(lpj.path, pattern = '_DR_', full.names = T)[1]) %>%
+crs(shp) <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+print(shp)
+lpj.nc <- nc_open(file.path(lpj.path,lpj.nc)) %>%
     ncvar_get(varid = 'DR') %>%
     aperm(c(2,1,3,4))
 
@@ -27,11 +27,11 @@ for (m in seq(12)) {
     
     # Read in the data
     lpj.r <- lpj.nc[,,,m] %>% rast(extent = c(-180,180,-90,90)) 
-    crs(lpj.r) <- 'EPSG:4326'
+    crs(lpj.r) <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
     r <- lpj.r %>%
         crop(shp) %>%
         mask(shp)
-    
+   print(r) 
     lpj.r[lpj.r==0] <- NA
     SpectralBands <- seq(400,2500,10)
     BandNames <- paste('Band', SpectralBands, sep = '_')
