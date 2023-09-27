@@ -76,7 +76,7 @@ jackknife.test <- function(plsr.dataset, data.var, n.comps = 15, iterations = 20
     
 }
 
-runPLSR <- function (plsr.df, data.var, train.size, jk.test = TRUE,
+runPLSR <- function (plsr.df, data.var, train.size, band.prefix, jk.test = TRUE,
                      jk.comps = 5, jk.iterations = 30, jk.prop = 0.10, 
                      plots = F, wl = seq(400, 2500, 10)) {
     
@@ -88,25 +88,19 @@ runPLSR <- function (plsr.df, data.var, train.size, jk.test = TRUE,
     n <- seq(nrow(plsr.df))
     split <- sample(n, replace = F, size = train.size) 
     
-    train <- plsr.df[split,]
-    test <- plsr.df[-split,]
+    train <- plsr.df[split, ]
+    test <- plsr.df[-split, ]
     
-    plsr.spectra <- as.matrix(train[,7:ncol(train)])
+    plsr.spectra <- as.matrix(train[,grep(band.prefix, names(plsr.df))])
     plsr.dataset <- data.frame(data = train[data.var], 
                                spectra = I(plsr.spectra))
     
-    test.spectra <- as.matrix(test[,7:ncol(test)])
+    test.spectra <- as.matrix(test[,grep(band.prefix, names(plsr.df))])
     test.dataset <- data.frame(data = test[data.var],
                                spectra = I(test.spectra))
     
     
     #lets take a look at the correlations between the spectra and the biochemical data
-    
-    #lets take a quick look at the correlations between the spectra and biochemical data
-    # Kyla note: I don't understand why this grep fcn is so complicated...
-    # spectra.cor <- cor(plsr.spectra, 
-    #                    plsr.dataset[grep(in.var, names(plsr.dataset), fixed = TRUE)], 
-    #                    use = "complete.obs")
     
     spectra.cor <- cor(plsr.dataset[data.var], 
                        plsr.dataset$spectra, 
@@ -135,7 +129,7 @@ runPLSR <- function (plsr.df, data.var, train.size, jk.test = TRUE,
     
     # now let's figure out which spectra to keep
     spec.cors <- as.data.frame(cbind(wl, t(spectra.cor)))
-    names(spec.cors) <- c("wave","cor")
+    names(spec.cors) <- c(band.prefix,"cor")
     
     # # now let's throw out some wavelengths!
     # keep.cors <- which(spec.cors$cor > 0.2 | spec.cors$cor < -0.1)
@@ -179,10 +173,6 @@ runPLSR <- function (plsr.df, data.var, train.size, jk.test = TRUE,
                      trace = F, data = plsr.dataset)
     if (plots == T) { plot(plsr.out) }
     
-    # plot(plsr.dataset$PLSR_N, plsr.out$fitted.values[,,1], type = "n")
-    # graphics::text(plsr.dataset$PLSR_N, plsr.out$fitted.values[,,1], 
-    #                labels = upper.data$pointIDs, 
-    #                cex = 0.8)
     
     if (plots == T) { validationplot(plsr.out) }
     
@@ -190,8 +180,6 @@ runPLSR <- function (plsr.df, data.var, train.size, jk.test = TRUE,
     fit1 <- (plsr.out$fitted.values[, , nComps])
     
     #lets plot them to see what they look like
-    # png(filename = paste0(fig.dir, "toc_LMA_obs_pred_", today, ".png"),
-    #     width = 7, height = 7, units = "in", res = 300)
     
     if (plots == T) {
         par(mar = c(4,4,3,3))
@@ -237,11 +225,6 @@ runPLSR <- function (plsr.df, data.var, train.size, jk.test = TRUE,
     return(coef(plsr.out, intercept=TRUE) %>% as.vector)
 }
 
-applyCoeff <- function(spectra, coeffs, intercept = 0, scale = 1) {
-    temp <- sum(spectra * as.vector(coeffs) * scale)
-    trait <- temp + as.numeric(intercept)
-    return(as.numeric(trait))
-}
 
 wl.interp <- function(y, wavelength) {
     out <- approx(x = seq(400,2500,10), y = y, xout = wavelength, 
@@ -250,20 +233,19 @@ wl.interp <- function(y, wavelength) {
     return(out)
 }
 
-trait.map <- function(raster, coeffs, coeffs_wl) {
+trait.map <- function(raster, coeffs, intercept = 0, coeffs_wl, na.rm = F) {
     require(terra)
-    raster[raster==0] <- NA
+    
+    # raster[raster==0] <- NA
     if (dim(raster)[3] != length(coeffs_wl)) {
-        
         # resample wavelengths 
         raster <- app(raster, function (y, w) wl.interp(y, coeffs_wl))
         raster[raster==0] <- NA
-        
     }
     
     # appling coeffs
-    traitmap <- app(raster, function (x) applyCoeff(x, coeffs = coeffs[-1], intercept = coeffs[1]))
-    traitmap[traitmap<0] <- NA
+    traitmap <- app(raster, function (x) sum(x * coeffs, na.rm) + as.numeric(intercept))
+    # traitmap[traitmap<0] <- NA
     
     return(traitmap)    
     

@@ -1,0 +1,111 @@
+---
+title: "LPJ-PROSAIL PLSR example"
+author: "Bryce Currey"
+date: "2023-09-27"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+This is a simple example of how to map PLSR coefficients across the LPJ-PROSAIL directional reflectance data output.
+
+### Packages
+```{r Packages, warning=FALSE}
+library(dplyr)
+library(terra)
+library(ncdf4)
+library(readr)
+library(ggplot2)
+library(tidyterra)
+library(RColorBrewer)
+```
+
+
+### Data path and dataset
+```{r}
+dp <- '~/path/to/data/'
+dp <- '~/Current Projects/SBG/LPJ/Reflectance_Data/version2/'
+lpj.nc <- 'lpj-prosail_levelC_DR_Version021_m_2020.nc'
+coefficients <- '~/Current Projects/SBG/LPJ/Global_trait_PLSRs/Example_LPJ-PROSAIL_PLSR_coefficients.csv'
+```
+
+
+### Functions 
+```{r, warning=FALSE}
+# Resample the bands of lpj-prosail to the same band centers as the coefficient data
+wl.interp <- function(y, wavelength) {
+    out <- approx(x = seq(400,2500,10), y = y, xout = wavelength, 
+                  method = "linear", rule = 2)[[2]]
+    return(out)
+}
+
+# Funcation that maps PLSR coefficients across the LPJ-PROSAIL dataset using 
+# the terra 'app' function.
+trait.map <- function(raster, coeffs, intercept = 0, coeffs_wl = seq(400,2500,10), na.rm = F) {
+    require(terra)
+    
+    # first check if the coefficient wavelengths and lpj prosail have the same bands
+    if (dim(raster)[3] != length(coeffs_wl)) {
+        # if not, resample bands
+        raster <- app(raster, function (y, w) wl.interp(y, coeffs_wl))
+    }
+    
+    # applying the coefficients
+    traitmap <- app(raster, function (x) sum(x * coeffs, na.rm) + as.numeric(intercept))
+    return(traitmap)    
+}
+```
+
+
+### Extract the data 
+```{r, warning=FALSE}
+lpj.array <- nc_open(file.path(dp, lpj.nc))
+# To extract all lons, lats, and bands, but select only one month, we will use 
+# the start and count functionality of ncdf library.
+# the dimensions of the data are lon, lat, wavelength, and time. To select all
+# values from a dimension, we set start = 1 and count = -1 (for all values). 
+# In the final dimension placeholder, we select 7 for the 7th month, and 1 
+# since we only want that one value.
+start = c(1,1,1,7) 
+count = c(-1,-1,-1,1)
+rfl <- ncvar_get(lpj.array, 'DR', start, count) # 'DR' is the reflectance stream.
+dim(rfl) # should be [720, 360, 211] representing [lon, lat, band].
+
+# To plot as a raster in R, lon and lat need to be transposed as such:
+rfl <- aperm(rfl, perm = c(2,1,3))
+```
+
+
+### Convert to a SpatRaster 
+```{r, warning=FALSE, fig.width=8, fig.height=4}
+lpj.r <- rast(rfl, crs = crs('EPSG:4326'), ext = c(-180,180,-90,90))
+lpj.r[lpj.r>0.7] <- NA # remove permanent snow features
+lpj.r[lpj.r==0] <- NA # set zero values to NA
+names(lpj.r) <- paste0('band', seq(400,2500,10))
+
+# Examine the data
+ggplot() +
+    geom_spatraster(data = lpj.r, aes(fill = band650)) +
+    scale_fill_gradientn(colours = rev(brewer.pal(11, 'Spectral')), limits = c(0,0.5), na.value = 'transparent') +
+    theme_void() +
+    labs(title = 'Wavelength = 700 nm')
+```
+
+
+### Apply the coefficients 
+```{r, warning=FALSE, fig.width=8, fig.height=4}
+coeffs <- read_csv(coefficients)
+head(coeffs)
+# A simple LMA map made using a PLSR between TRY data and LPJ-prosail data
+# In this dataset, the intercept is the first coefficient
+lma <- trait.map(raster = lpj.r, coeffs = coeffs$lma[-1], intercept = coeffs$lma[1])
+
+ggplot() +
+    geom_spatraster(data = lma) +
+    scale_fill_gradientn(colors = c("wheat2", "darkgreen"), limits = c(0.25, 0.4), na.value = 'transparent') +
+    theme_void() +
+    labs(title = 'LPJ-PROSAIL estimated LMA (g/g)')
+```
