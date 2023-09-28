@@ -14,7 +14,7 @@ export lpjpath='/discover/nobackup/projects/SBG-DO/bcurrey/global_run_simulation
 export datapath='/discover/nobackup/bcurrey/Global_trait_PLSRs/data/'
 export lpjnc='lpj-prosail_levelC_DR_Version021_m_2022.nc'
 
-Rscript '/discover/nobackup/bcurrey/Global_trait_PLSRs/R/LPJ_trait_mapping.R'
+Rscript '/discover/nobackup/bcurrey/Global_trait_PLSRs/R_scripts/LPJ_trait_mapping.R'
 
 
 

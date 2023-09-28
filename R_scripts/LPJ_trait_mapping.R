@@ -1,7 +1,7 @@
 library(terra)
 library(ncdf4)
 library(tidyverse)
-source('/discover/nobackup/bcurrey/Global_trait_PLSRs/R/lpj_plsr_functions.R')
+source('/discover/nobackup/bcurrey/Global_trait_PLSRs/R_scripts/lpj_plsr_functions.R')
 
 
 print('Starting trait mapping')
@@ -29,12 +29,12 @@ lpj.array <- nc_open(file.path(lpj.path, lpj.nc)) %>%
     aperm(c(2,1,3))
 
 lpj.r <- rast(lpj.array, ext = c(-180,180,-90,90))
-crs(lpj.r) <-"+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+crs(lpj.r) <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 
 lpj.r[lpj.r>0.7] <- NA
 lpj.r[lpj.r==0] <- NA
 
-cells <- crds(lpj.r, na.rm = F)
+cells <- vect(crds(lpj.r, na.rm = F))
 crs(cells) <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 
 
