@@ -63,22 +63,22 @@ names(plsr.data) <- c('x', 'y', paste0('wave',seq(400,2500,10)), lma.name, n.nam
 
 # This is for July
 print('LMA PLSR')
-lma.coefs <- runPLSR(plsr.data, data.var = lma.name, band.prefix = 'wave', train.size = 2000, plots = F,
+lma.coefs <- runPLSR(plsr.data, data.var = lma.name, band.prefix = 'wave', train.size = 5000, plots = F,
                      jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
 print('N PLSR')
-n.coefs <- runPLSR(plsr.data, data.var = n.name, band.prefix = 'wave', train.size = 2000, plots = F,
+n.coefs <- runPLSR(plsr.data, data.var = n.name, band.prefix = 'wave', train.size = 5000, plots = F,
                    jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
 print('P PLSR')
-p.coefs <- runPLSR(plsr.data, data.var = p.name, band.prefix = 'wave', train.size = 2000, plots = F,
+p.coefs <- runPLSR(plsr.data, data.var = p.name, band.prefix = 'wave', train.size = 5000, plots = F,
                    jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
 print('SLA PLSR')
-sla.coefs <- runPLSR(plsr.data, data.var = sla.name, band.prefix = 'wave', train.size = 2000, plots = F,
+sla.coefs <- runPLSR(plsr.data, data.var = sla.name, band.prefix = 'wave', train.size = 5000, plots = F,
                      jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
 
 # writing coeffs
 print('Writing coefficients')
 coeff.df <- data.frame(coeff = c('Intercept', seq(400,2500,10)), lma = lma.coefs, n = n.coefs, p = p.coefs, sla = sla.coefs)
-write_csv(dp, 'LPJ-PROSAIL_TRY_coeffs_July.csv')
+write_csv(coeff.df, paste0(dp, 'LPJ-PROSAIL_TRY_coeffs_July.csv'))
 
 
 
@@ -90,8 +90,8 @@ sla.map <- trait.map(lpj.r, coeff.df$sla[-1], coeff.df$sla[1], coeffs_wl = seq(4
 
 
 print('Writing raster stack')
-trait.stack <- c(lma.map, n.map, p.map, sla.coefs)
-names(trait.stack) <- c(lma.name, n.name, c.name, sla.name)
+trait.stack <- c(lma.map, n.map, p.map, sla.map)
+names(trait.stack) <- c(lma.name, n.name, p.name, sla.name)
 writeRaster(trait.stack, file.path(dp, 'LPJ_v21_TRY_trait_maps_July_2020.tif'))
 
 print('Finished')
