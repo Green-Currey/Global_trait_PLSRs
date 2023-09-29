@@ -88,27 +88,28 @@ library(ggpubr)
 p1 <- ggplot() +
     geom_spatraster(data = lma.map) +
     scale_fill_gradientn(colors = c("wheat2", "darkgreen"), limits = c(0.25, 0.4), na.value = 'transparent') +
-    theme_void() +
+    theme_void(base_size = 20) +
     labs(title = 'LPJ-PROSAIL estimated LMA (g/g)')
 
 p2 <- ggplot() +
     geom_spatraster(data = n.map) +
     scale_fill_gradientn(colors = c("wheat2", "darkgreen"), limits = c(15, 25), na.value = 'transparent') +
-    theme_void() +
+    theme_void(base_size = 20) +
     labs(title = 'LPJ-PROSAIL estimated Leaf N (mg/g)')
 
 p3 <- ggplot() +
     geom_spatraster(data = p.map) +
     scale_fill_gradientn(colors = c("wheat2", "darkgreen"), limits = c(0.9, 1.6), na.value = 'transparent') +
-    theme_void() +
+    theme_void(base_size = 20) +
     labs(title = 'LPJ-PROSAIL estimated Leaf P (mg/g)')
 
 p4 <- ggplot() +
     geom_spatraster(data = sla.map) +
     scale_fill_gradientn(colors = c("wheat2", "darkgreen"), limits = c(7, 20), na.value = 'transparent') +
-    theme_void() +
+    theme_void(base_size = 20) +
     labs(title = 'LPJ-PROSAIL estimated SLA (mm2/mg)')
 
 
 ggarrange(p1,p2,p3,p4,
-          nrow = 2, align = 'hv')
+          nrow = 2, ncol = 2,
+          align = 'hv')
