@@ -12,7 +12,6 @@ trait.path <- '~/Current Projects/SBG/Trait mapping/Global_trait_maps_Moreno_Mar
 lpj.path <- '~/Current Projects/SBG/LPJ/Reflectance_Data/version2/'
 
 
-
 lma.name <- 'LDMC_3km_v1'
 n.name <- 'LNC_3km_v1'
 p.name <- 'LPC_3km_v1'
@@ -21,35 +20,41 @@ sla.name <- 'SLA_3km_v1'
 lpj.nc <- 'lpj-prosail_levelC_DR_Version021_m_2020.nc'
 
 # create PLSR data.frame --------------------------------------------------
+print('Reading in LPJ array')
+lpj.array <- nc_open(file.path(lpj.path, lpj.nc)) %>%
+    ncvar_get('DR', start = c(1,1,1,7), count = c(-1,-1,-1,1)) %>%
+    aperm(c(2,1,3))
 
-lpj.array <- nc_open(file.path(lpj.path, lpj.nc)) %>% ncvar_get('DR') %>% aperm(c(2,1,3,4))
+lpj.r <- rast(lpj.array, ext = c(-180,180,-90,90))
+crs(lpj.r) <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 
-lpj.r <- rast(lpj.array[,,,7], crs = crs('EPSG:4326'), ext = c(-180,180,-90,90))
 lpj.r[lpj.r>0.7] <- NA
 lpj.r[lpj.r==0] <- NA
 
-cells <- crds(lpj.r, na.rm = F) %>% vect(crs = crs('EPSG:4326'))
+cells <- vect(crds(lpj.r, na.rm = F))
+crs(cells) <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 
-ldmc <- rast(file.path(trait.path, lma.name, paste0(lma.name,'.tif')))
+
+print('Extract points from TRY trait maps')
+ldmc <- rast(file.path(dp, paste0(lma.name,'.tif')))
 ldmc[ldmc<0.1 | ldmc>0.5] <- NA
 ldmc <- ldmc %>% terra::extract(cells, ID = F)
 
-lnc <- rast(file.path(trait.path,n.name, paste0(n.name,'.tif')))
+lnc <- rast(file.path(dp, paste0(n.name,'.tif')))
 lnc[lnc<13 | lnc>25] <- NA
 lnc <- lnc %>% terra::extract(cells, ID = F)
 
-lpc <- rast(file.path(trait.path,p.name, paste0(p.name,'.tif'))) 
+lpc <- rast(file.path(dp, paste0(p.name,'.tif'))) 
 lpc[lpc<0.8 | lpc>2.1] <- NA
 lpc <- lpc %>% terra::extract(cells, ID = F)
 
-sla <- rast(file.path(trait.path,sla.name, paste0(sla.name,'.tif')))
+sla <- rast(file.path(dp, paste0(sla.name,'.tif')))
 sla[sla<7 | sla>21] <- NA
 sla <- sla %>% terra::extract(cells, ID = F)
 
 lpj.df <- as.data.frame(lpj.r, xy = T, na.rm = F)
 plsr.data <- cbind.data.frame(lpj.df, ldmc, lnc, lpc, sla) %>% na.exclude()
 names(plsr.data) <- c('x', 'y', paste0('wave',seq(400,2500,10)), lma.name, n.name, p.name, sla.name)
-
 
 # run PLSR ----------------------------------------------------------------
 

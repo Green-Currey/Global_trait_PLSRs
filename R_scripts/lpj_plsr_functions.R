@@ -81,16 +81,16 @@ runPLSR <- function (plsr.df, data.var, train.size, band.prefix, jk.test = TRUE,
                      plots = F, wl = seq(400, 2500, 10)) {
     
     # Debugging
-    plsr.df <- plsr.data
-    data.var <- lma.name
-    train.size <- 2000
-    band.prefix <- 'wave'
-    jk.test <- FALSE
-    jk.comps <- 5
-    jk.iterations <- 30
-    jk.prop <- 0.10
-    plots <- TRUE
-    wl <- seq(400, 2500, 10)
+    # plsr.df <- plsr.data
+    # data.var <- lma.name
+    # train.size <- 2000
+    # band.prefix <- 'wave'
+    # jk.test <- FALSE
+    # jk.comps <- 5
+    # jk.iterations <- 30
+    # jk.prop <- 0.10
+    # plots <- TRUE
+    # wl <- seq(400, 2500, 10)
     
     
     require(pls)
