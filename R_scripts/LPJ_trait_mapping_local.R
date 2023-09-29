@@ -2,7 +2,7 @@ source('~/R/clean.R')
 library(terra)
 library(ncdf4)
 library(tidyverse)
-source('~/Current Projects/SBG/LPJ/Global_trait_PLSRs/R/lpj_plsr_functions.R')
+source('~/Current Projects/SBG/LPJ/Global_trait_PLSRs/R_scripts/lpj_plsr_functions.R')
 
 
 # paths -------------------------------------------------------------------

@@ -80,6 +80,19 @@ runPLSR <- function (plsr.df, data.var, train.size, band.prefix, jk.test = TRUE,
                      jk.comps = 5, jk.iterations = 30, jk.prop = 0.10, 
                      plots = F, wl = seq(400, 2500, 10)) {
     
+    # Debugging
+    plsr.df <- plsr.data
+    data.var <- lma.name
+    train.size <- 2000
+    band.prefix <- 'wave'
+    jk.test <- FALSE
+    jk.comps <- 5
+    jk.iterations <- 30
+    jk.prop <- 0.10
+    plots <- TRUE
+    wl <- seq(400, 2500, 10)
+    
+    
     require(pls)
     pls.options(plsralg = "oscorespls")
     pls.options("plsralg")
@@ -199,9 +212,15 @@ runPLSR <- function (plsr.df, data.var, train.size, band.prefix, jk.test = TRUE,
     
     # dev.off()
     
-    
-    print.message('Training RMSE: ', round(sqrt(mean((unlist(train[data.var]) - fit1)^2)),3))
-    print.message('Training R2: ',round(summary(lm(unlist(train[data.var]) ~ fit1))$r.squared, 3))
+    actual <- unlist(train[data.var])
+    predicted <- fit1
+    rmse <- sqrt(mean((predicted - actual)^2)) %>% round(3)
+    mae <- mean(abs(predicted - actual)) %>% round(3)
+    print.message('Training RMSE: ', rmse)
+    print.message('Training %RMSE: ', round(rmse/mean(actual)*100,3))
+    print.message('Training MAE: ', mae)
+    print.message('Training %MAE: ', round(mae/mean(actual)*100,3))
+    print.message('Training R2: ', round(summary(lm(unlist(train[data.var]) ~ fit1))$r.squared, 3))
     
     # predict LMA on the test data then plot against measured values
     plsr.predicted.test <- predict(plsr.out, 
@@ -219,9 +238,17 @@ runPLSR <- function (plsr.df, data.var, train.size, band.prefix, jk.test = TRUE,
         abline(0, 1, col = "red", lwd = 2, lty = 2)
     }
     
-    print.message('Testing RMSE: ', round(sqrt(mean((unlist(test[data.var]) - plsr.predicted.test)^2)),3))
+    actual <- unlist(test[data.var])
+    predicted <- plsr.predicted.test
+    rmse <- sqrt(mean((predicted - actual)^2)) %>% round(3)
+    mae <- mean(abs(predicted - actual)) %>% round(3)
+    print.message('Testing RMSE: ', rmse)
+    print.message('Testing %RMSE: ', round(rmse/mean(actual)*100,3))
+    print.message('Testing MAE: ', mae)
+    print.message('Testing %MAE: ', round(mae/mean(actual)*100,3))
     print.message('Testing R2: ',round(summary(lm(unlist(test[data.var]) ~ plsr.predicted.test))$r.squared, 3))
-    
+
+
     return(coef(plsr.out, intercept=TRUE) %>% as.vector)
 }
 
