@@ -17,12 +17,12 @@ n.name <- 'LNC_3km_v1'
 p.name <- 'LPC_3km_v1'
 sla.name <- 'SLA_3km_v1'
 
-lpj.nc <- 'lpj-prosail_levelC_DR_Version021_m_2020.nc'
+lpj.nc <- 'lpj-prosail_levelC_DR_Version021_m_2016.nc'
 
 # create PLSR data.frame --------------------------------------------------
 print('Reading in LPJ array')
 lpj.array <- nc_open(file.path(lpj.path, lpj.nc)) %>%
-    ncvar_get('DR', start = c(1,1,1,7), count = c(-1,-1,-1,1)) %>%
+    ncvar_get('DR', start = c(1,1,1,8), count = c(-1,-1,-1,1)) %>%
     aperm(c(2,1,3))
 
 lpj.r <- rast(lpj.array, ext = c(-180,180,-90,90))
@@ -62,17 +62,17 @@ names(plsr.data) <- c('x', 'y', paste0('wave',seq(400,2500,10)), lma.name, n.nam
 # This is for July
 
 # LMA
-lma.coefs <- runPLSR(plsr.data, data.var = lma.name, band.prefix = 'wave', train.size = 2000, plots = F,
-                     jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 7)
+lma.coefs <- runPLSR(plsr.data, data.var = lma.name, band.prefix = 'wave', train.size = 5000, plots = F,
+                     jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
 
-n.coefs <- runPLSR(plsr.data, data.var = n.name, band.prefix = 'wave', train.size = 2000, plots = F,
+n.coefs <- runPLSR(plsr.data, data.var = n.name, band.prefix = 'wave', train.size = 5000, plots = F,
                    jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
-p.coefs <- runPLSR(plsr.data, data.var = p.name, band.prefix = 'wave', train.size = 2000, plots = F,
+p.coefs <- runPLSR(plsr.data, data.var = p.name, band.prefix = 'wave', train.size = 5000, plots = F,
                    jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
-sla.coefs <- runPLSR(plsr.data, data.var = sla.name, band.prefix = 'wave', train.size = 2000, plots = F,
+sla.coefs <- runPLSR(plsr.data, data.var = sla.name, band.prefix = 'wave', train.size = 5000, plots = F,
                      jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
 coeff.df <- data.frame(coeff = c('Intercept', seq(400,2500,10)), lma = lma.coefs, n = n.coefs, p = p.coefs, sla = sla.coefs)
-write_csv(coeff.df, '~/Current Projects/SBG/LPJ/Global_trait_PLSRs/Example_LPJ-PROSAIL_PLSR_coefficients_local.csv')
+write_csv(coeff.df, '~/Current Projects/SBG/LPJ/Global_trait_PLSRs/LPJ-PROSAIL_PLSR_coefficients_August2022.csv')
 
 lma.map <- trait.map(lpj.r, coeffs = coeff.df$lma[-1], intercept = coeff.df$lma[1], coeffs_wl = seq(400,2500,10))
 n.map <- trait.map(lpj.r,  coeffs = coeff.df$n[-1], intercept = coeff.df$n[1], coeffs_wl = seq(400,2500,10))
@@ -89,25 +89,25 @@ p1 <- ggplot() +
     geom_spatraster(data = lma.map) +
     scale_fill_gradientn(colors = c("wheat2", "darkgreen"), limits = c(0.25, 0.4), na.value = 'transparent') +
     theme_void(base_size = 20) +
-    labs(title = 'LPJ-PROSAIL estimated LMA (g/g)')
+    labs(title = 'Estimated LMA (g/g)')
 
 p2 <- ggplot() +
     geom_spatraster(data = n.map) +
     scale_fill_gradientn(colors = c("wheat2", "darkgreen"), limits = c(15, 25), na.value = 'transparent') +
     theme_void(base_size = 20) +
-    labs(title = 'LPJ-PROSAIL estimated Leaf N (mg/g)')
+    labs(title = 'Estimated Leaf N (mg/g)')
 
 p3 <- ggplot() +
     geom_spatraster(data = p.map) +
     scale_fill_gradientn(colors = c("wheat2", "darkgreen"), limits = c(0.9, 1.6), na.value = 'transparent') +
     theme_void(base_size = 20) +
-    labs(title = 'LPJ-PROSAIL estimated Leaf P (mg/g)')
+    labs(title = 'Estimated Leaf P (mg/g)')
 
 p4 <- ggplot() +
     geom_spatraster(data = sla.map) +
     scale_fill_gradientn(colors = c("wheat2", "darkgreen"), limits = c(7, 20), na.value = 'transparent') +
     theme_void(base_size = 20) +
-    labs(title = 'LPJ-PROSAIL estimated SLA (mm2/mg)')
+    labs(title = 'Estimated SLA (mm2/mg)')
 
 
 ggarrange(p1,p2,p3,p4,
