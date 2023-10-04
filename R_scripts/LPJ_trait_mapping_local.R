@@ -12,7 +12,7 @@ trait.path <- '~/Current Projects/SBG/Trait mapping/Global_trait_maps_Moreno_Mar
 lpj.path <- '~/Current Projects/SBG/LPJ/Reflectance_Data/version2/'
 
 
-lma.name <- 'LDMC_3km_v1'
+ldmc.name <- 'LDMC_3km_v1'
 n.name <- 'LNC_3km_v1'
 p.name <- 'LPC_3km_v1'
 sla.name <- 'SLA_3km_v1'
@@ -36,7 +36,7 @@ crs(cells) <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
 
 
 print('Extract points from TRY trait maps')
-ldmc <- rast(file.path(trait.path, lma.name, paste0(lma.name,'.tif')))
+ldmc <- rast(file.path(trait.path, ldmc.name, paste0(ldmc.name,'.tif')))
 ldmc[ldmc<0.1 | ldmc>0.5] <- NA
 ldmc <- ldmc %>% terra::extract(cells, ID = F)
 
@@ -54,27 +54,30 @@ sla <- sla %>% terra::extract(cells, ID = F)
 
 lpj.df <- as.data.frame(lpj.r, xy = T, na.rm = F)
 plsr.data <- cbind.data.frame(lpj.df, ldmc, lnc, lpc, sla) %>% na.exclude()
-names(plsr.data) <- c('x', 'y', paste0('wave',seq(400,2500,10)), lma.name, n.name, p.name, sla.name)
+names(plsr.data) <- c('x', 'y', paste0('wave',seq(400,2500,10)), ldmc.name, n.name, p.name, sla.name)
 
 # run PLSR ----------------------------------------------------------------
 
 
 # This is for July
 
-# LMA
-lma.coefs <- runPLSR(plsr.data, data.var = lma.name, band.prefix = 'wave', train.size = 5000, plots = F,
+ldmc.coefs <- runPLSR(plsr.data, data.var = ldmc.name, band.prefix = 'wave', train.size = 5000, plots = F,
                      jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
 
 n.coefs <- runPLSR(plsr.data, data.var = n.name, band.prefix = 'wave', train.size = 5000, plots = F,
                    jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
+
 p.coefs <- runPLSR(plsr.data, data.var = p.name, band.prefix = 'wave', train.size = 5000, plots = F,
                    jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
+
 sla.coefs <- runPLSR(plsr.data, data.var = sla.name, band.prefix = 'wave', train.size = 5000, plots = F,
                      jk.test = F, jk.prop = 0.15, jk.iterations = 20, jk.comps = 5)
-coeff.df <- data.frame(coeff = c('Intercept', seq(400,2500,10)), lma = lma.coefs, n = n.coefs, p = p.coefs, sla = sla.coefs)
+
+
+coeff.df <- data.frame(coeff = c('Intercept', seq(400,2500,10)), ldmc = ldmc.coefs, n = n.coefs, p = p.coefs, sla = sla.coefs)
 write_csv(coeff.df, '~/Current Projects/SBG/LPJ/Global_trait_PLSRs/LPJ-PROSAIL_PLSR_coefficients_August2022.csv')
 
-lma.map <- trait.map(lpj.r, coeffs = coeff.df$lma[-1], intercept = coeff.df$lma[1], coeffs_wl = seq(400,2500,10))
+ldmc.map <- trait.map(lpj.r, coeffs = coeff.df$ldmc[-1], intercept = coeff.df$ldmc[1], coeffs_wl = seq(400,2500,10))
 n.map <- trait.map(lpj.r,  coeffs = coeff.df$n[-1], intercept = coeff.df$n[1], coeffs_wl = seq(400,2500,10))
 p.map <- trait.map(lpj.r, coeff.df$p[-1], coeff.df$p[1], coeffs_wl = seq(400,2500,10))
 sla.map <- trait.map(lpj.r, coeff.df$sla[-1], coeff.df$sla[1], coeffs_wl = seq(400,2500,10))
@@ -82,14 +85,17 @@ sla.map <- trait.map(lpj.r, coeff.df$sla[-1], coeff.df$sla[1], coeffs_wl = seq(4
 
 # plotting ----------------------------------------------------------------
 
+
+
+
 library(ggplot2)
 library(tidyterra)
 library(ggpubr)
 p1 <- ggplot() +
-    geom_spatraster(data = lma.map) +
+    geom_spatraster(data = ldmc.map) +
     scale_fill_gradientn(colors = c("wheat2", "darkgreen"), limits = c(0.25, 0.4), na.value = 'transparent') +
     theme_void(base_size = 20) +
-    labs(title = 'Estimated LMA (g/g)')
+    labs(title = 'Estimated LDMC (g/g)')
 
 p2 <- ggplot() +
     geom_spatraster(data = n.map) +
