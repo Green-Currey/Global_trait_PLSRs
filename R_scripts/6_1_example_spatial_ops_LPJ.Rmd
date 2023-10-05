@@ -1,0 +1,179 @@
+---
+title: "6.1 Example Spatial Operations on LPJ"
+author: "Bryce Currey"
+date: "2023-10-05"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview
+This is a simple example of how to use various geospatial operations like crop(), mask(), extract(), and reproject().
+
+### Packages
+```{r Packages, warning=FALSE}
+library(tidyverse)
+library(terra)
+library(ncdf4)
+library(readr)
+library(ggplot2)
+library(tidyterra)
+library(RColorBrewer)
+library(rworldmap)
+library(ggpubr)
+```
+
+
+### LPJ path and dataset
+```{r}
+dp <- '~/path/to/data/'
+git <- '~/Current Projects/SBG/LPJ/Global_trait_PLSRs/'
+dp <- '~/Current Projects/SBG/LPJ/Reflectance_Data/version2/'
+lpj.nc <- 'lpj-prosail_levelC_DR_Version021_m_2020.nc'
+```
+
+### NEON data
+```{r}
+# In this example, well extract spectra from each NEON site. 
+# You can download from here: https://www.neonscience.org/field-sites/explore-field-sites or in line in R.
+# You can also pull from the Github repo
+
+# Note: You might need to Run R in admin mode to use download.file().
+# Note 2: This file gets updated regularly, but the version below is the version on GitHub.
+
+# neon <- 'https://www.neonscience.org/sites/default/files/NEON_Field_Site_Metadata_20230309.csv'
+# download.file(neon, '~/Current Projects/SBG/LPJ/Global_trait_PLSRs/data/')
+
+neon <- read_csv(file.path(git, 'data/NEON_Field_Site_Metadata_20230309.csv'))
+str(neon, show_col_types = FALSE)
+
+```
+
+
+### Extract the data 
+```{r, warning=FALSE}
+lpj.array <- nc_open(file.path(dp, lpj.nc))
+# To extract all lons, lats, and bands, but select only one month, we will use 
+# the start and count functionality of ncdf library.
+# the dimensions of the data are lon, lat, wavelength, and time. To select all
+# values from a dimension, we set start = 1 and count = -1 (for all values). 
+# In the final dimension placeholder, we select 5 for the 5th month, and 1 
+# since we only want that one value.
+
+start = c(1,1,1,5) 
+count = c(-1,-1,-1,1)
+rfl <- ncvar_get(lpj.array, 'DR', start, count) # 'DR' is the reflectance stream.
+dim(rfl) # should be [720, 360, 211] representing [lon, lat, band].
+
+# To plot as a raster in R, lon and lat need to be transposed as such:
+rfl <- aperm(rfl, perm = c(2,1,3))
+```
+
+### Convert to a SpatRaster 
+```{r, warning=FALSE, fig.width=8, fig.height=4}
+lpj.r <- rast(rfl, crs = crs('EPSG:4326'), ext = c(-180,180,-90,90))
+names(lpj.r) <- paste0('band', seq(400,2500,10))
+
+# Examine the data
+ggplot() +
+    geom_spatraster(data = lpj.r, aes(fill = band650)) +
+    scale_fill_gradientn(colours = rev(brewer.pal(11, 'Spectral')), limits = c(0,1), na.value = 'transparent') +
+    theme_void() +
+    labs(title = 'May, 2020. Wavelength = 650 nm')
+```
+
+
+### Simple set of spatial operations
+## 1. Crop
+```{r, warning=FALSE, fig.width=8, fig.height=4}
+# Next we'll perform a simple set of spatial opperations to make a nice RGB figure of the US,
+
+# First, obtain spatvector of the US. We'll start with a shapefile of the world from rworldmap packages,
+# and subset it to the US. (We'll also convert it to a SpatVector using vect().)
+world <- getMap()
+USA <- vect(subset(world, NAME == "United States"))
+
+# Crop LPJ to that vector
+LPJ.NA <- crop(lpj.r, USA)
+plot(LPJ.NA$band400, smooth = T, main = 'North America LPJ Reflectance, 400 nm')
+plot(USA, add = T)
+
+```
+
+## 2. Mask USA 
+```{r, warning=FALSE, fig.width=8, fig.height=4}
+LPJ.USA <- terra::mask(LPJ.NA, USA)
+plot(LPJ.USA$band780, smooth = T, main = 'US LPJ Reflectance, 780 nm')
+plot(USA, add = T)
+```
+
+## 3. Extract spectra from NEON data
+```{r, warning=FALSE, fig.width=8, fig.height=4}
+# Extract the points from a spat vector (we'll plot later).
+neon.points <- vect(neon, geom=c('field_longitude', 'field_latitude'), crs = 'EPSG:4326')
+neon.rfl <- terra::extract(LPJ.USA, neon.points)
+
+# Set the neon site ID as the ID column
+neon.rfl$ID <- neon$field_site_id
+head(neon.rfl)
+
+# Convert to long format for ggplot
+neon.rfl.plot <- pivot_longer(neon.rfl, -ID, names_to = 'Wavelength', values_to = 'Reflectance') %>% 
+    tidyr::separate(Wavelength, into = c(NA, "Wavelength"), sep = "(?<=[a-zA-Z])(?=[0-9])", convert = T)
+head(neon.rfl.plot)
+
+```
+
+## 4. Reproject USA spectra
+```{r, warning=FALSE, fig.width=8, fig.height=4}
+# Lets convert to NAD83 for display
+LPJ.USA.nad <- project(LPJ.USA, 'EPSG:4269')
+USA.nad <- project(USA, 'EPSG:4269')
+neon.points.nad <- project(neon.points, 'EPSG:4269')
+
+```
+
+## 5. Plot RGR and spectra from NEON sites together
+```{r, warning=FALSE, fig.width=16, fig.height=16}
+
+# To make an RGB plot, you must know the band index location of the R, G, and B channels.
+# Well use Blue = 440, Green = 550, and Red = 660
+wl <- seq(400,2500,10)
+red <- which(wl == 660)
+green <- which(wl == 550)
+blue <- which(wl == 440)
+
+spatialPlot <- ggplot() +
+    geom_spatraster_rgb(data = LPJ.USA.nad, r = red, g = green, b = blue, max_col_value = 0.3) +
+    geom_spatvector_label(data = neon.points.nad, aes(label = field_site_id), 
+                          alpha = 0.5) +
+    geom_spatvector(data = USA.nad, alpha = 0, linewidth = 1, color = 'black') +
+    scale_fill_manual(na.value = 'transparent') +
+    coord_sf(crs = 4269) +
+    theme_classic(base_size = 20) + 
+    theme(plot.margin = margin(1, 0, 1, 0, "cm")) +
+    labs(x = 'Longitude', y = 'Latitude')
+
+
+spectraPlot <- ggplot(neon.rfl.plot) +
+    geom_line(aes(x = Wavelength, y = Reflectance, group = ID, color = ID)) +
+    scale_color_viridis_d() +
+    theme_bw(base_size = 20) +
+    theme(legend.position = c(0.99, 0.99),       # Position at the top right
+          legend.justification = c(1, 1),        # Justify plot's corner at that position
+          legend.background = element_blank(),   # Remove the background
+          legend.box.background = element_rect(color = "black", size = 0.5),
+          legend.text = element_text(size = 15),
+          plot.margin = margin(0, 6, 0, 6, "cm"))   
+
+annotate_figure(
+    ggarrange(spatialPlot, spectraPlot, 
+              nrow = 2, ncol = 1, 
+              heights = c(1, 1), widths = c(1,0.5)),
+    top = text_grob("LPJ-PROSAIL spectra extract from NEON sites, May 2020", size = 25, face = "bold", color = "Black")
+)
+
+
+```

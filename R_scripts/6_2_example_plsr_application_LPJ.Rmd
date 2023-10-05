@@ -1,5 +1,5 @@
 ---
-title: "LPJ-PROSAIL PLSR example"
+title: "6.2 LPJ-PROSAIL PLSR example"
 author: "Bryce Currey"
 date: "2023-09-27"
 output: word_document
